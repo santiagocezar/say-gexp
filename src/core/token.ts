@@ -12,19 +12,16 @@ export const CLOSING = {
 export type Opening = keyof typeof OPENING;
 export type Closing = keyof typeof CLOSING;
 
-export type Atom =
+export type Token =
+    | ["opening", Opening]
+    | ["closing", Closing]
+    | ["shorthand", string]
     | ["symbol", string]
     | ["number", number]
     | ["boolean", boolean]
     | ["null", null]
     | ["undefined", undefined]
     | ["string", string];
-
-export type Token =
-    | ["opening", Opening]
-    | ["closing", Closing]
-    | ["special", string]
-    | Atom;
 
 const isKeyOf = <ObjectType extends Record<PropertyKey, unknown>>(
     object: ObjectType,
@@ -46,6 +43,10 @@ function isTerminator(c: string | undefined) {
 function isNotTerminator(c: string | undefined): c is string {
     return !isTerminator(c);
 }
+
+const SHORTHANDS: Record<string, string> = {
+    ";": "spread",
+};
 
 export function* tokenize(prog: Iterable<string, undefined>) {
     const iter = prog[Symbol.iterator]();
@@ -183,15 +184,16 @@ export function* tokenize(prog: Iterable<string, undefined>) {
         }
     }
 
-    function spread(): Token | undefined {
-        if (peek() == ";") {
+    function shorthand(): Token | undefined {
+        const sym = SHORTHANDS[peek() ?? ""];
+        if (sym) {
             skip();
-            return ["special", ";"];
+            return ["shorthand", sym];
         }
     }
 
     while (peek()) {
-        const token = spread() ?? list() ?? str() ?? symnum();
+        const token = shorthand() ?? list() ?? str() ?? symnum();
 
         if (token) yield token;
         else skip();

@@ -210,11 +210,21 @@ importers:
       esrap:
         specifier: ^2.2.11
         version: 2.2.11
+    devDependencies:
+      '@types/node':
+        specifier: ^26.0.0
+        version: 26.0.0
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
 packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@types/node@26.0.0':
+    resolution: {integrity: sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA==}
 
   esrap@2.2.11:
     resolution: {integrity: sha512-gPdx+I+BjYEinNMQaBXFjbaJVyoPMU4ZODg5mE+M4DqVG9VusAVHHjcBX+zqyITlI0DIARwDMMzZwAWj36dRoQ==}
@@ -224,10 +234,26 @@ packages:
       '@typescript-eslint/types':
         optional: true
 
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
+
 snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
+  '@types/node@26.0.0':
+    dependencies:
+      undici-types: 8.3.0
+
   esrap@2.2.11:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  typescript@6.0.3: {}
+
+  undici-types@8.3.0: {}
