@@ -109,7 +109,7 @@ export function isReservedIdentifier(ident: string) {
 }
 
 export function assertNonReservedIdentifier(ident: string) {
-    if (!isReservedIdentifier(ident)) {
+    if (isReservedIdentifier(ident)) {
         throw new Error(
             `${ident} can't be used as a JavaScript Identifier in this context`,
         );
