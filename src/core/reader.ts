@@ -1,59 +1,93 @@
-import { OPENING, type Opening, tokenize } from "./token.ts";
+import { OPENING, type Opening, type Token, tokenize } from "./token.ts";
 import { List, Sym } from "./types.ts";
 
 export type Atom = Sym | boolean | number | null | undefined | string;
 
 export type Form = List | Atom;
 
-export function* read(prog: Iterable<string>) {
-    const stack: [shorthand: boolean, List][] = [];
+const ICANHAZTOKEN = Symbol("ICANHAZTOKEN");
 
-    function* fuse(form: Form): Generator<Form> {
-        const top = stack[stack.length - 1];
-        if (!top) {
-            yield form;
-            return;
-        }
+type Reads<T> = Generator<typeof ICANHAZTOKEN, T>;
 
-        const [shorthand, list] = top;
+const tap = {
+    [Symbol.iterator]: function* (): Reads<Token> {
+        return yield ICANHAZTOKEN;
+    },
+};
 
-        list.items.push(form);
-
-        if (shorthand) {
-            stack.pop();
-            yield* fuse(list);
-        }
+function* read_list(list: List): Reads<List> {
+    let token;
+    while (((token = yield* tap), token[0] !== "closing")) {
+        const forms = yield* read_form(token);
+        list.items.push(...forms);
     }
 
-    for (let token of tokenize(prog)) {
-        if (token[0] === "opening") {
-            stack.push([false, new List(token[1], [])]);
-        } else if (token[0] === "shorthand") {
-            stack.push([true, new List("(", [new Sym(token[1])])]);
-        } else if (token[0] === "closing") {
-            const top = stack.pop();
+    if (!list.doesMatch(token[1])) {
+        throw new Error(
+            "closing " + token[1] + " does not match with " + list.type,
+        );
+    }
 
-            if (!top) {
-                throw new Error("extra " + token[1] + " in input");
-            }
+    return list;
+}
 
-            const [, form] = top;
+function* read_shorthand(name: string): Reads<List[]> {
+    const forms = yield* read_form();
+    const call = new List("(", [new Sym(name), ...forms]);
+    return [call];
+}
 
-            if (!form.doesMatch(token[1])) {
-                throw new Error(
-                    "closing " + token[1] + " does not match with " + form.type,
-                );
-            }
+const SPECIAL: Record<string, () => Reads<Form[]>> = {
+    ";": () => read_shorthand("spread"),
+};
 
-            yield* fuse(form);
+function* read_form(token?: Token): Reads<Form[]> {
+    token ??= yield* tap;
+
+    if (token[0] === "opening") {
+        const list = yield* read_list(new List(token[1], []));
+        return [list];
+    } else if (token[0] === "special") {
+        const forms = yield* SPECIAL[token[1]]!();
+        return forms;
+    } else if (token[0] === "closing") {
+        throw new Error("extra " + token[1] + " in input");
+    } else {
+        if (token[0] === "symbol") {
+            const sym = new Sym(token[1]);
+            return [sym];
         } else {
-            let value: Atom;
-            if (token[0] === "symbol") {
-                value = new Sym(token[1]);
-            } else {
-                value = token[1];
-            }
-            yield* fuse(value);
+            return [token[1]];
+        }
+    }
+}
+
+type PushResult = { done: true; forms: Form[] } | { done: false; forms: [] };
+
+export class Reader {
+    #read_fun: Reads<Form[]> | undefined;
+
+    static tokens(prog: Iterable<string>) {
+        return tokenize(
+            prog,
+            (c) => c in SPECIAL,
+            (c) => c in SPECIAL,
+        );
+    }
+
+    push(token: Token): PushResult {
+        if (!this.#read_fun) {
+            this.#read_fun = read_form();
+            this.#read_fun.next();
+        }
+
+        const status = this.#read_fun.next(token);
+
+        if (status.done) {
+            this.#read_fun = undefined;
+            return { done: true, forms: status.value };
+        } else {
+            return { done: false, forms: [] };
         }
     }
 }

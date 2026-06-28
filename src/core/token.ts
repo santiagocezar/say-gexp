@@ -15,7 +15,7 @@ export type Closing = keyof typeof CLOSING;
 export type Token =
     | ["opening", Opening]
     | ["closing", Closing]
-    | ["shorthand", string]
+    | ["special", string]
     | ["symbol", string]
     | ["number", number]
     | ["boolean", boolean]
@@ -36,25 +36,29 @@ function isWhitespace(c: string) {
     return c === " " || c === "\r" || c === "\n";
 }
 
-function isTerminator(c: string | undefined) {
+function isKnownTerminator(c: string) {
     return !c || c === '"' || c in OPENING || c in CLOSING || isWhitespace(c);
 }
 
-function isNotTerminator(c: string | undefined): c is string {
-    return !isTerminator(c);
-}
-
-const SHORTHANDS: Record<string, string> = {
-    ";": "spread",
-};
-
-export function* tokenize(prog: Iterable<string, undefined>) {
+export function* tokenize(
+    prog: Iterable<string, undefined>,
+    isSpecial: (c: string) => boolean,
+    isSpecialTerminator: (c: string) => boolean,
+) {
     const iter = prog[Symbol.iterator]();
 
     let cursor = 0;
     let stack: string[] = [];
 
     let _c: string | undefined = iter.next().value;
+
+    function isTerminator(c: string | undefined) {
+        return !c || isKnownTerminator(c) || isSpecialTerminator(c);
+    }
+
+    function isNotTerminator(c: string | undefined): c is string {
+        return !isTerminator(c);
+    }
 
     function skip() {
         _c = iter.next().value;
@@ -184,16 +188,16 @@ export function* tokenize(prog: Iterable<string, undefined>) {
         }
     }
 
-    function shorthand(): Token | undefined {
-        const sym = SHORTHANDS[peek() ?? ""];
-        if (sym) {
+    function special(): Token | undefined {
+        const c = peek() ?? "";
+        if (isSpecial(c)) {
             skip();
-            return ["shorthand", sym];
+            return ["special", c];
         }
     }
 
     while (peek()) {
-        const token = shorthand() ?? list() ?? str() ?? symnum();
+        const token = special() ?? list() ?? str() ?? symnum();
 
         if (token) yield token;
         else skip();
