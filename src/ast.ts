@@ -30,10 +30,12 @@ const CHAR_MAP: Record<string, string> = {
     "?": "_QMARK_",
 };
 
-export function asIdentifier(form: Form) {
+export function asIdentifier(form: Form): any {
     let name;
     if (Sym.isSym(form)) {
         name = Array.from(form.name, (c) => CHAR_MAP[c] ?? c).join("");
+    } else if (typeof form === "string") {
+        name = form;
     } else if (form === undefined) {
         name = "undefined";
     } else if (form === null) {
@@ -117,11 +119,6 @@ export function assertNonReservedIdentifier(ident: string) {
 }
 
 export function asLiteral(value: Form) {
-    if (Sym.isSym(value)) {
-        assertNonReservedIdentifier(value.name);
-        return asIdentifier(value);
-    }
-
     if (List.isList(value)) {
         throw new Error(
             `${formType(value)} form is not a valid JavaScript Literal`,
@@ -134,48 +131,82 @@ export function asLiteral(value: Form) {
     };
 }
 
+// TODO: this function is not really flexible, doesn't allow
+// for computed or optional properties
+export function asMemberExpression(object: any, properties: any[]) {
+    return properties.reduce(
+        (object, property) => ({
+            type: "MemberExpression",
+            object,
+            property,
+        }),
+        object,
+    );
+}
+
+export function asCall(forms: Form[]) {
+    let [callee, ...params] = forms;
+
+    // shorthand for array indexing
+    // TODO: use asMemberExpression here
+    if (typeof callee === "number" || typeof callee === "string") {
+        return {
+            type: "MemberExpression",
+            object: asExpression(params[0]),
+            property: asLiteral(callee),
+            optional: false,
+            computed: true,
+        };
+    }
+
+    let calleeExpr;
+
+    if (Sym.isSym(callee)) {
+        // transpiler macros
+        const special = SPECIAL_FORMS[callee.name];
+        if (special) {
+            return special(...params);
+        }
+
+        // method syntax
+        if (callee.name.startsWith(".") && !callee.name.startsWith("..")) {
+            const [, ...idents] = callee.name.split(".");
+
+            // remove and use 1st param as method target instance
+            const [object] = params.splice(0, 1);
+
+            calleeExpr = asMemberExpression(
+                asExpression(object),
+                idents.map(asIdentifier),
+            );
+        }
+        // TODO: optional call
+    }
+
+    calleeExpr ??= asExpression(callee);
+
+    return {
+        type: "CallExpression",
+        callee: calleeExpr,
+        arguments: params.map((form) => {
+            if (List.isList(form) && Sym.isSym(form.items[0], "spread")) {
+                return {
+                    type: "SpreadElement",
+                    argument: asExpression(form.items[1]),
+                };
+            } else {
+                return asExpression(form);
+            }
+        }),
+        optional: false,
+    };
+}
+
 export function asExpression(form: Form): any {
     if (List.isList(form)) {
         if (form.type === "(") {
             if (form.items.length) {
-                const [callee, ...params] = form.items;
-
-                // shorthand for array indexing
-                if (typeof callee === "number" || typeof callee === "string") {
-                    return {
-                        type: "MemberExpression",
-                        object: asExpression(params[0]),
-                        property: asLiteral(callee),
-                        optional: false,
-                        computed: true,
-                    };
-                }
-
-                if (Sym.isSym(callee)) {
-                    const special = SPECIAL_FORMS[callee.name];
-                    if (special) {
-                        return special(...params);
-                    }
-                    // TODO: optional call
-                }
-                return {
-                    type: "CallExpression",
-                    callee: asExpression(callee),
-                    arguments: params.map((form) => {
-                        if (
-                            List.isList(form) &&
-                            Sym.isSym(form.items[0], "spread")
-                        ) {
-                            return {
-                                type: "SpreadElement",
-                                argument: asExpression(form.items[1]),
-                            };
-                        } else {
-                            return asExpression(form);
-                        }
-                    }),
-                    optional: false,
-                };
+                return asCall(form.items);
             } else {
                 // TODO: or should I return a null literal
                 return {
@@ -189,8 +220,14 @@ export function asExpression(form: Form): any {
                 elements: form.items.map(asExpression),
             };
         }
+    } else if (Sym.isSym(form)) {
+        const [ident, ...member] = form.name.split(".");
+        assertNonReservedIdentifier(ident!);
+        return asMemberExpression(
+            asIdentifier(ident!),
+            member.map(asIdentifier),
+        );
     }
-
     return asLiteral(form);
 }
 
