@@ -2,9 +2,11 @@ import { type Form } from "./reader.ts";
 import { type Closing, type Opening, OPENING } from "./token.ts";
 
 export class Sym {
-    name: string;
+    readonly name: string;
+    readonly keyword: boolean;
     constructor(value: string) {
-        this.name = value;
+        this.keyword = value.startsWith(":");
+        this.name = this.keyword ? value.substring(1) : value;
     }
 
     static isSym(obj: any, name?: string): obj is Sym {

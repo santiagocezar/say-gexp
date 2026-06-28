@@ -168,8 +168,16 @@ export function asCall(forms: Form[]) {
             return special(...params);
         }
 
+        // property syntax
+        if (callee.keyword) {
+            return asMemberExpression(asExpression(params[0]), [
+                asIdentifier(callee),
+            ]);
+        }
+
         // method syntax
         if (callee.name.startsWith(".") && !callee.name.startsWith("..")) {
+            // TODO: actually do we really need chaining here
             const [, ...idents] = callee.name.split(".");
 
             // remove and use 1st param as method target instance
@@ -221,6 +229,10 @@ export function asExpression(form: Form): any {
             };
         }
     } else if (Sym.isSym(form)) {
+        if (form.keyword) {
+            return asLiteral(form.name);
+        }
+
         const [ident, ...member] = form.name.split(".");
         assertNonReservedIdentifier(ident!);
         return asMemberExpression(
