@@ -1,7 +1,7 @@
 import { OPENING, type Opening, type Token, tokenize } from "./token.ts";
 import { List, Sym } from "./types.ts";
 
-export type Atom = Sym | boolean | number | null | undefined | string;
+export type Atom = Sym | boolean | number | string;
 
 export type Form = List | Atom;
 

@@ -19,8 +19,6 @@ export type Token =
     | ["symbol", string]
     | ["number", number]
     | ["boolean", boolean]
-    | ["null", null]
-    | ["undefined", undefined]
     | ["string", string];
 
 const isKeyOf = <ObjectType extends Record<PropertyKey, unknown>>(
@@ -105,9 +103,7 @@ export function* tokenize(
                 case "false":
                     return ["boolean", false];
                 case "null":
-                    return ["null", null];
                 case "undefined":
-                    return ["undefined", undefined];
                 default:
                     return ["symbol", raw];
             }
