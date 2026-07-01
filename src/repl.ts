@@ -2,10 +2,10 @@ import { Session } from "node:inspector/promises";
 import readline from "node:readline/promises";
 import vm from "node:vm";
 import { stdin as input, stdout as output } from "node:process";
-import { Reader } from "./src/core/reader.ts";
+import { Reader } from "./core/reader.ts";
 import { print } from "esrap";
 import ts from "esrap/languages/ts";
-import { transpileToAST } from "./src/eval.ts";
+import { transpileToAST } from "./eval.ts";
 
 const rl = readline.createInterface({ input, output });
 
@@ -26,7 +26,7 @@ session.connect();
 
 let pending = false;
 while (true) {
-    const prog = await rl.question(pending ? "... " : ">>> ");
+    const prog = await rl.question(pending ? "|" : ">");
 
     for (const token of Reader.tokens(prog)) {
         const { done, forms } = reader.push(token);
