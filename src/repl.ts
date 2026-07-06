@@ -2,72 +2,111 @@ import { Session } from "node:inspector/promises";
 import readline from "node:readline/promises";
 import vm from "node:vm";
 import { stdin as input, stdout as output } from "node:process";
-import { Reader } from "./core/reader.ts";
+import { Reader } from "#core/reader.ts";
 import { print } from "esrap";
 import ts from "esrap/languages/ts";
-import { transpileToAST } from "./eval.ts";
+import { transpiler, transpileToJS } from "./transpile.ts";
+import * as sayGlobal from "./say-global.ts";
 
 const rl = readline.createInterface({ input, output });
 
-// i'm cheating
+// const session = new Session();
 
-function _PLUS_(a, b) {
-    // TODO: variadic _PLUS_
-    return a + b;
-}
+// session.connect();
+
+// await session.post("Runtime.enable");
+
+// session.addListener("Runtime.executionContextCreated", (ev) => {
+//     startRepl(ev.params.context.id);
+// });
+
+// vm.createContext(sayGlobal, {
+//     importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER,
+// });
+
+// async function evalIn(contextId: number, code: string) {
+//     try {
+//         const { result, exceptionDetails } = await session.post(
+//             "Runtime.evaluate",
+//             {
+//                 contextId,
+//                 returnByValue: true,
+//                 awaitPromise: true,
+//                 replMode: true,
+//                 expression: code,
+//             },
+//         );
+//         if (exceptionDetails) {
+//             console.error(exceptionDetails);
+//         }
+//         console.log(result.value);
+//     } catch (err) {
+//         console.error(err);
+//     }
+// }
+
+// async function startRepl(contextId: number) {
+//     let pending = false;
+//     while (true) {
+//         const prog = await rl.question(pending ? "|" : ">");
+
+//         for (const token of Reader.tokens(prog)) {
+//             const { done, form } = reader.push(token);
+//             pending = !done;
+
+//             if (done) {
+//                 let ast;
+//                 try {
+//                     ast = transpileToAST(form);
+//                 } catch (err) {
+//                     console.error(err);
+//                     continue;
+//                 }
+//                 console.dir(ast, { depth: null });
+
+//                 const code = print(ast as any, ts()).code;
+
+//                 console.log(code);
+
+//                 await evalIn(contextId, code);
+//             }
+//         }
+//     }
+// }
 
 const reader = new Reader();
-const session = new Session();
-const context = vm.createContext(undefined, {
-    importModuleDynamically: vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER,
-});
-
-session.connect();
 
 let pending = false;
+
+Object.assign(globalThis, sayGlobal);
+
+const transpile = transpiler();
+
 while (true) {
     const prog = await rl.question(pending ? "|" : ">");
 
     for (const token of Reader.tokens(prog)) {
-        const { done, forms } = reader.push(token);
+        const { done, form } = reader.push(token);
         pending = !done;
 
         if (done) {
-            for (const form of forms) {
-                console.dir(form, { depth: null });
-                let ast;
-                try {
-                    ast = transpileToAST(form);
-                } catch (err) {
-                    console.error(err);
-                    continue;
-                }
-                console.dir(ast, { depth: null });
+            let out;
+            try {
+                out = transpile(form);
+            } catch (err) {
+                console.error(err);
+                continue;
+            }
 
-                const code = print(ast as any, ts()).code;
-
+            try {
+                const code = transpileToJS(out);
                 console.log(code);
-                try {
-                    const { result, exceptionDetails } = await session.post(
-                        "Runtime.evaluate",
-                        {
-                            // why is it 2?, i don't know how to get the id
-                            // for the context created above, but this seems
-                            // to be it?
-                            contextId: 2,
-                            awaitPromise: true,
-                            replMode: true,
-                            expression: code,
-                        },
-                    );
-                    if (exceptionDetails) {
-                        console.error(exceptionDetails);
-                    }
-                    console.log(result.value);
-                } catch (err) {
-                    console.error(err);
-                    continue;
-                }
+                const res = (0, eval)(code);
+
+                console.log(res);
+            } catch (err) {
+                console.error(err);
+                continue;
             }
         }
     }

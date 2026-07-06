@@ -1,68 +1,47 @@
 import { type Form } from "./reader.ts";
-import { type Closing, type Opening, OPENING } from "./token.ts";
 
 export class Sym {
-    readonly name: string;
-    readonly keyword: boolean;
-    constructor(value: string) {
-        this.keyword = value.startsWith(":");
-        this.name = this.keyword ? value.substring(1) : value;
+    v: string;
+    constructor(v: string) {
+        this.v = v;
     }
 
     static isSym(obj: any, name?: string): obj is Sym {
-        return obj instanceof Sym && (name === undefined || obj.name === name);
+        return obj instanceof Sym && (name === undefined || obj.v === name);
     }
 }
 
-// export class Special implements ParentForm {
-//     type: string;
-//     form: Form | null;
-
-//     constructor(type: string, form: Form | null) {
-//         this.type = type;
-//         this.form = form;
-//     }
-
-//     static isSpecial(obj: any): obj is Special {
-//         return obj instanceof Special;
-//     }
-
-//     add(form: Form) {
-//         this.form = form;
-//         return true;
-//     }
-// }
-
-export class List {
-    type: Opening;
-    items: Form[];
-
-    constructor(type: Opening, forms: Form[]) {
-        this.type = type;
-        this.items = forms;
+export class Keyword {
+    v: string;
+    constructor(v: string) {
+        this.v = v;
     }
 
-    static isList(obj: any): obj is List {
+    static isKeyword(obj: any, name?: string): obj is Keyword {
+        return obj instanceof Keyword && (name === undefined || obj.v === name);
+    }
+}
+
+export class List extends Array<Form> {
+    static isList(obj: unknown): obj is List {
         return obj instanceof List;
     }
-
-    doesMatch(char: Closing) {
-        return OPENING[this.type] === char;
-    }
 }
 
+export type FormMap = { [k: PropertyKey]: Form };
+
 export function formType(form: Form) {
-    return Sym.isSym(form)
-        ? "symbol"
-        : List.isList(form)
-          ? form.type === "("
-              ? "list"
-              : form.type === "["
-                ? "vector"
-                : form.type === "{"
-                  ? "map"
-                  : "unknown list"
-          : form === null
-            ? "null"
-            : typeof form;
+    return form === null
+        ? "null"
+        : Sym.isSym(form)
+          ? "symbol"
+          : Keyword.isKeyword(form)
+            ? "keyword"
+            : List.isList(form)
+              ? "array (parens)"
+              : Array.isArray(form)
+                ? "array"
+                : typeof form === "object"
+                  ? "object"
+                  : typeof form;
 }

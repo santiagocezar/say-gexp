@@ -16,11 +16,16 @@
       "onFail": "download"
     }
   },
+  "imports": {
+    "#core/*": "./src/core/*",
+    "#ast/*": "./src/ast/*"
+  },
   "type": "module",
   "dependencies": {
     "esrap": "^2.2.11"
   },
   "devDependencies": {
+    "@types/estree": "^1.0.9",
     "@types/node": "^26.0.0",
     "typescript": "^6.0.3"
   }

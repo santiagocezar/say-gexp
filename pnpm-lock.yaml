@@ -209,8 +209,11 @@ importers:
     dependencies:
       esrap:
         specifier: ^2.2.11
-        version: 2.2.11
+        version: 2.2.11(@typescript-eslint/types@8.62.1)
     devDependencies:
+      '@types/estree':
+        specifier: ^1.0.9
+        version: 1.0.9
       '@types/node':
         specifier: ^26.0.0
         version: 26.0.0
@@ -223,8 +226,15 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
+  '@types/estree@1.0.9':
+    resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
+
   '@types/node@26.0.0':
     resolution: {integrity: sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA==}
+
+  '@typescript-eslint/types@8.62.1':
+    resolution: {integrity: sha512-ooCzJFaf+Hg+uG6fA3NRFGuFjlfNlDhBthbv4ZPU/0elCAFUfnyXUvf/WOpHz/jYwSmvU2GkR2LtyUfy1AxZ1Q==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   esrap@2.2.11:
     resolution: {integrity: sha512-gPdx+I+BjYEinNMQaBXFjbaJVyoPMU4ZODg5mE+M4DqVG9VusAVHHjcBX+zqyITlI0DIARwDMMzZwAWj36dRoQ==}
@@ -246,13 +256,20 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
+  '@types/estree@1.0.9': {}
+
   '@types/node@26.0.0':
     dependencies:
       undici-types: 8.3.0
 
-  esrap@2.2.11:
+  '@typescript-eslint/types@8.62.1':
+    optional: true
+
+  esrap@2.2.11(@typescript-eslint/types@8.62.1):
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+    optionalDependencies:
+      '@typescript-eslint/types': 8.62.1
 
   typescript@6.0.3: {}
 
