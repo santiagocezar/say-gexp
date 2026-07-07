@@ -5,8 +5,8 @@ import { print } from "esrap";
 import ts from "esrap/languages/ts";
 
 import { transformForm, type es, type Out } from "./ast/index.ts";
-
-type Macros = Record<string, (...forms: Form[]) => Form>;
+import type { Macros } from "./stdmacros.ts";
+import stdMacros from "./stdmacros.ts";
 
 function expand(macros: Macros, form: Form, quasiquote = false): Form {
     if (List.isList(form)) {
@@ -106,7 +106,7 @@ export function stringify(form: Form): string {
 }
 
 export function transpiler() {
-    const macros: Macros = {};
+    const macros: Macros = stdMacros;
 
     return function (form: Form) {
         let prev;
@@ -121,11 +121,37 @@ export function transpiler() {
         if (out.macro) {
             (0, eval)(transpileToJS(out));
             macros[out.macro] = (0, eval)(out.macro);
-            console.log(macros);
         }
 
         return out;
     };
+}
+
+export function transform(source: string) {
+    const module: es.Program = {
+        type: "Program",
+        sourceType: "module",
+        body: [],
+    };
+    const reader = new Reader();
+    const transpile = transpiler();
+
+    for (const token of Reader.tokens(source)) {
+        const result = reader.push(token);
+        if (result.done) {
+            const out = transpile(result.form);
+
+            if (out.preamble) module.body.push(...out.preamble);
+            module.body.push({
+                type: "ExpressionStatement",
+                expression: out.expr,
+            });
+        }
+    }
+
+    const { code } = print(module as any, ts());
+
+    return code;
 }
 
 export function transpileToJS(out: Out) {

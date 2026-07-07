@@ -1,22 +1,19 @@
 import {
     arity,
-    emitIdentifier,
-    emitMemberExpression,
     mapExpr,
     SKIP_UNDEFINED,
     type Env,
     type es,
     type Out,
 } from "#ast/common.ts";
-import { transformArguments, transformForm } from "#ast/index.ts";
+import { transformForm } from "#ast/index.ts";
 import type { Form } from "#core/reader.ts";
-import { Sym } from "#core/types.ts";
 
 import { quoteForm } from "./quote.ts";
 import specialFunction from "./functions.ts";
 import specialDo from "./do.ts";
 import { specialOperators } from "./operators.ts";
-import { specialMethodCall, specialThreading } from "./functional.ts";
+import { specialMethodCall } from "./functional.ts";
 
 const special: Record<string, (env: Env, forms: Form[]) => Out> = {
     quote: (env, forms) =>
@@ -47,7 +44,6 @@ const special: Record<string, (env: Env, forms: Form[]) => Out> = {
     fn: (env, forms) => specialFunction(forms),
     do: (env, forms) => specialDo(env, forms),
     ".": (env, forms) => specialMethodCall(env, forms),
-    "->": (env, forms) => specialThreading(env, forms),
 
     await: (env, form) =>
         mapExpr(transformForm(env, form), (argument) => ({
