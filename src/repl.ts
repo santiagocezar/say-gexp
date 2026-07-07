@@ -100,10 +100,7 @@ while (true) {
 
             try {
                 const code = transpileToJS(out);
-                console.log(code);
                 const res = (0, eval)(code);
-
-                console.log(res);
             } catch (err) {
                 console.error(err);
                 continue;
