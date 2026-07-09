@@ -20,6 +20,7 @@ export function quoteList(env: Env, list: List): Out {
             {
                 ...env,
                 quote: null,
+                target: "expression",
             },
             form,
         );

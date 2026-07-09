@@ -15,6 +15,7 @@ export function operator<O extends string>(
 ): (env: Env, forms: Form[]) => Out {
     if (binary) {
         return function (env, forms) {
+            env = { ...env, target: "expression" };
             return mapExpr(
                 reduceExpr(forms.map((form) => transformForm(env, form))),
                 (exprs) => ({
@@ -24,6 +25,7 @@ export function operator<O extends string>(
         };
     } else {
         return function (env, forms) {
+            env = { ...env, target: "expression" };
             return mapExpr(transformForm(env, forms[0]!), (expr) => ({
                 expr: emitUnaryExpression(op, expr),
             }));

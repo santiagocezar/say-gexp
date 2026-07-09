@@ -13,6 +13,8 @@ import {
 } from "./common.ts";
 
 import special from "./special/index.ts";
+
+export { type Out, SKIP_UNDEFINED } from "./common.ts";
 export type * as es from "estree";
 
 export function transformKeyword(kw: Keyword): es.Literal {
@@ -39,6 +41,8 @@ export function transformList(env: Env, list: List): Out {
         }
     }
 
+    env = { ...env, target: "expression" };
+
     if (Keyword.isKeyword(first)) {
         const [object] = arity(":" + first.v, 1, rest);
 
@@ -59,9 +63,17 @@ export function transformList(env: Env, list: List): Out {
         }));
     }
 
-    const args = transformArguments(env, rest);
+    return transformCallExpression(env, first, rest);
+}
 
-    return mapExpr(transformForm(env, first), (callee) =>
+export function transformCallExpression(
+    env: Env,
+    callee: Form,
+    params: Form[],
+): Out<es.CallExpression> {
+    const args = transformArguments(env, params);
+
+    return mapExpr(transformForm(env, callee), (callee) =>
         mapExpr(args, (args) => ({
             expr: {
                 type: "CallExpression",
@@ -204,6 +216,8 @@ export function transformForm(env: Env, form: Form): Out {
     if (List.isList(form)) {
         return transformList(env, form);
     }
+
+    env = { ...env, target: "expression" };
 
     if (Array.isArray(form)) {
         const elements = reduceExpr(

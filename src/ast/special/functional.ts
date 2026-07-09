@@ -10,6 +10,8 @@ import type { Form } from "#core/reader.ts";
 import { Sym } from "#core/types.ts";
 
 export function specialMethodCall(env: Env, forms: Form[]) {
+    env = { ...env, target: "expression" };
+
     const [object, method, ...rest] = forms;
     if (!object || !method) {
         throw new Error(`. expects (at least) 2 arguments`);

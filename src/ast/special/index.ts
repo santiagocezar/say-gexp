@@ -14,6 +14,8 @@ import specialFunction from "./functions.ts";
 import specialDo from "./do.ts";
 import { specialOperators } from "./operators.ts";
 import { specialMethodCall } from "./functional.ts";
+import { specialIf } from "./control.ts";
+import { specialNew } from "./classes.ts";
 
 const special: Record<string, (env: Env, forms: Form[]) => Out> = {
     quote: (env, forms) =>
@@ -24,10 +26,13 @@ const special: Record<string, (env: Env, forms: Form[]) => Out> = {
         quoteForm({ ...env, quote: "quasiquote" }, forms[0]!),
     spread: (env, forms) =>
         arity("spread", 1, forms) &&
-        mapExpr(transformForm(env, forms[0]!), (expr) => ({
-            expr,
-            spread: true,
-        })),
+        mapExpr(
+            transformForm({ ...env, target: "expression" }, forms[0]!),
+            (expr) => ({
+                expr,
+                spread: true,
+            }),
+        ),
     defn: (env, forms) => {
         return mapExpr(specialFunction(forms), (fn) => ({
             preamble: [
@@ -43,23 +48,32 @@ const special: Record<string, (env: Env, forms: Form[]) => Out> = {
     },
     fn: (env, forms) => specialFunction(forms),
     do: (env, forms) => specialDo(env, forms),
+    if: (env, forms) => specialIf(env, forms),
     ".": (env, forms) => specialMethodCall(env, forms),
 
+    new: (env, forms) => specialNew(env, forms),
+
     await: (env, form) =>
-        mapExpr(transformForm(env, form), (argument) => ({
-            expr: {
-                type: "AwaitExpression",
-                argument,
-            },
-        })),
+        mapExpr(
+            transformForm({ ...env, target: "expression" }, form),
+            (argument) => ({
+                expr: {
+                    type: "AwaitExpression",
+                    argument,
+                },
+            }),
+        ),
 
     import: (env, form) =>
-        mapExpr(transformForm(env, form), (source) => ({
-            expr: {
-                type: "ImportExpression",
-                source,
-            },
-        })),
+        mapExpr(
+            transformForm({ ...env, target: "expression" }, form),
+            (source) => ({
+                expr: {
+                    type: "ImportExpression",
+                    source,
+                },
+            }),
+        ),
 
     ...specialOperators,
 };
