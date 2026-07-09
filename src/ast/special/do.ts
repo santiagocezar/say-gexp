@@ -6,82 +6,103 @@ import {
     emitIdentifier,
     type es,
     gensym,
+    mapExpr,
 } from "#ast/common.ts";
 import { transformForm } from "#ast/index.ts";
 import { Sym } from "#core/types.ts";
 
-export default function specialDo(env: Env, forms: Form[]): Out {
-    const finalPreamble: es.Statement[] = [];
-
-    if (env.target === "expression") {
-        env.target = gensym("_doexpr_");
-        finalPreamble.push({
-            type: "VariableDeclaration",
-            kind: "var",
-            declarations: [
-                {
-                    type: "VariableDeclarator",
-                    id: emitIdentifier(env.target.v),
-                },
-            ],
-        });
-    }
-
-    const blockPreamble: es.Statement[] = [];
-    let finalExpr: es.Expression = SKIP_UNDEFINED;
-
-    const last = forms.length - 1;
+export function transformBlockStatement(
+    env: Env,
+    forms: Form[],
+): es.BlockStatement {
+    const body: es.Statement[] = [];
 
     forms.forEach((form, i) => {
-        const { preamble, expr } = transformForm(env, form);
+        const newEnv = {
+            ...env,
+            target: i + 1 === forms.length ? env.target : null,
+        };
 
-        if (i === last) {
-            finalPreamble.push({
-                type: "BlockStatement",
-                body: blockPreamble,
-            });
+        const { preamble, expr } = transformForm(newEnv, form);
 
-            if (preamble) finalPreamble.push(...preamble);
-            finalExpr = expr;
-        } else {
-            if (preamble) blockPreamble.push(...preamble);
-            blockPreamble.push({
-                type: "ExpressionStatement",
-                expression: expr,
-            });
+        if (preamble) body.push(...preamble);
+
+        if (expr === SKIP_UNDEFINED) {
+            return;
         }
-    });
 
-    if (finalExpr !== SKIP_UNDEFINED) {
-        if (Sym.isSym(env.target)) {
-            const left = emitIdentifier(env.target.v);
-            finalPreamble.push({
+        if (Sym.isSym(newEnv.target)) {
+            const left = emitIdentifier(newEnv.target.v);
+            body.push({
                 type: "ExpressionStatement",
                 expression: {
                     type: "AssignmentExpression",
                     operator: "=",
                     left,
-                    right: finalExpr,
+                    right: expr,
                 },
             });
-            finalExpr = left;
-        } else if (env.target === "return") {
-            finalPreamble.push({
-                type: "ReturnStatement",
-                argument: finalExpr,
-            });
-            finalExpr = SKIP_UNDEFINED;
-        } else {
-            finalPreamble.push({
-                type: "ExpressionStatement",
-                expression: finalExpr,
-            });
-            finalExpr = SKIP_UNDEFINED;
+            return;
         }
+
+        if (newEnv.target === "return") {
+            body.push({
+                type: "ReturnStatement",
+                argument: expr,
+            });
+            return;
+        }
+
+        body.push({
+            type: "ExpressionStatement",
+            expression: expr,
+        });
+    });
+
+    if (body.length === 1 && body[0]?.type === "BlockStatement") {
+        return body[0];
     }
 
     return {
-        preamble: finalPreamble,
-        expr: finalExpr,
+        type: "BlockStatement",
+        body,
     };
+}
+
+export function targetExpression(env: Env) {
+    var preamble: es.Statement[] = [];
+
+    if (env.target === "expression") {
+        const target = gensym("_doexpr_");
+        env = { ...env, target };
+        preamble.push({
+            type: "VariableDeclaration",
+            kind: "var",
+            declarations: [
+                {
+                    type: "VariableDeclarator",
+                    id: emitIdentifier(target.v),
+                },
+            ],
+        });
+    }
+
+    return {
+        env,
+        out: {
+            preamble,
+            expr: Sym.isSym(env.target)
+                ? emitIdentifier(env.target.v)
+                : SKIP_UNDEFINED,
+        },
+    };
+}
+
+export default function specialDo(env: Env, forms: Form[]): Out {
+    const { env: nextEnv, out } = targetExpression(env);
+
+    return mapExpr(out, (expr) => ({
+        preamble: [transformBlockStatement(nextEnv, forms)],
+        expr,
+    }));
 }

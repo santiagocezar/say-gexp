@@ -1,6 +1,6 @@
 import { emitIdentifier, type es, type Out } from "#ast/common.ts";
 import { Keyword, List, Sym, type Form } from "#core/index.ts";
-import specialDo from "./do.ts";
+import specialDo, { transformBlockStatement } from "./do.ts";
 
 export default function specialFunction(
     args: Form[],
@@ -46,13 +46,6 @@ export default function specialFunction(
         }
     });
 
-    const { preamble = [] } = specialDo(
-        {
-            target: "return",
-        },
-        body,
-    );
-
     const id = idForm === null ? null : emitIdentifier(idForm.v);
 
     return {
@@ -68,10 +61,12 @@ export default function specialFunction(
                     value: docs.map((d) => "* " + d).join("\n"),
                 },
             ],
-            body: {
-                type: "BlockStatement",
-                body: preamble,
-            },
+            body: transformBlockStatement(
+                {
+                    target: "return",
+                },
+                body,
+            ),
         },
         macro: flags["macro"] ? id?.name : undefined,
     };

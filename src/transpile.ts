@@ -4,7 +4,12 @@ import { Keyword, l, List, s, Sym } from "./core/index.ts";
 import { print } from "esrap";
 import ts from "esrap/languages/ts";
 
-import { transformForm, type es, type Out } from "./ast/index.ts";
+import {
+    SKIP_UNDEFINED,
+    transformForm,
+    type es,
+    type Out,
+} from "./ast/index.ts";
 import type { Macros } from "./stdmacros.ts";
 import stdMacros from "./stdmacros.ts";
 
@@ -142,10 +147,11 @@ export function transform(source: string) {
             const out = transpile(result.form);
 
             if (out.preamble) module.body.push(...out.preamble);
-            module.body.push({
-                type: "ExpressionStatement",
-                expression: out.expr,
-            });
+            if (out.expr !== SKIP_UNDEFINED)
+                module.body.push({
+                    type: "ExpressionStatement",
+                    expression: out.expr,
+                });
         }
     }
 
@@ -158,11 +164,12 @@ export function transpileToJS(out: Out) {
     const module: es.Program = {
         type: "Program",
         sourceType: "module",
-        body: [
-            ...(out.preamble ?? []),
-            { type: "ExpressionStatement", expression: out.expr },
-        ],
+        body: [],
     };
+
+    if (out.preamble) module.body.push(...out.preamble);
+    if (out.expr !== SKIP_UNDEFINED)
+        module.body.push({ type: "ExpressionStatement", expression: out.expr });
 
     const { code } = print(module as any, ts());
 
@@ -178,7 +185,11 @@ export function transpileAllToJS(outputs: Out[]) {
 
     outputs.forEach((out) => {
         if (out.preamble) module.body.push(...out.preamble);
-        module.body.push({ type: "ExpressionStatement", expression: out.expr });
+        if (out.expr !== SKIP_UNDEFINED)
+            module.body.push({
+                type: "ExpressionStatement",
+                expression: out.expr,
+            });
     });
 
     const { code } = print(module as any, ts());
