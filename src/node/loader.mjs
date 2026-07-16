@@ -1,6 +1,7 @@
+//@ts-check
 import path from "node:path";
-
-import { transform } from "../transpile.ts";
+import { transform } from "#compiler/transform.ts";
+import { Reader } from "#core/reader.ts";
 
 /** @type {import("node:module").ResolveHook} */
 export async function resolve(specifier, context, nextResolve) {
@@ -28,11 +29,11 @@ export async function load(url, context, nextLoad) {
     const rawSource =
         "" + (await nextLoad(url, { ...context, format: "module" })).source;
 
-    const transpiledSource = transform(rawSource);
+    const source = await transform(Reader.read(rawSource));
 
     return {
         format: "module",
         shortCircuit: true,
-        source: transpiledSource,
+        source,
     };
 }

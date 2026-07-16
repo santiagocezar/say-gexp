@@ -1,9 +1,14 @@
 import { OPENING, type Opening, type Token, tokenize } from "./token.ts";
-import { Keyword, List, Sym } from "./types.ts";
-
-export type Atom = Sym | Keyword | boolean | number | string;
-
-export type Form = Atom | List | Form[] | Map<Form, Form>;
+import {
+    type Form,
+    type Collection,
+    type Pairs,
+    list,
+    sym,
+    vec,
+    pairs,
+    stringify,
+} from "./form.ts";
 
 const ICANHAZTOKEN = Symbol("ICANHAZTOKEN");
 
@@ -15,62 +20,53 @@ const tap = {
     },
 };
 
-function* read_list(list: List): Reads<List> {
+function* read_collection(coll: Collection): Reads<Collection> {
+    const [start, end] = coll.l ? ["(", ")"] : ["[", "]"];
+
     let token;
     while (((token = yield* tap), token[0] !== "closing")) {
         const form = yield* read_form(token);
-        list.push(form);
+        coll.v.push(form);
     }
 
-    if (token[1] !== ")") {
-        throw new Error("closing " + token[1] + " does not match with (");
+    if (token[1] !== end) {
+        throw new Error(
+            "closing " + token[1] + " does not match with " + start,
+        );
     }
 
-    return list;
+    return coll;
 }
 
-function* read_array(arr: Form[]): Reads<Form[]> {
-    let token;
-    while (((token = yield* tap), token[0] !== "closing")) {
-        const form = yield* read_form(token);
-        arr.push(form);
-    }
-
-    if (token[1] !== "]") {
-        throw new Error("closing " + token[1] + " does not match with [");
-    }
-
-    return arr;
-}
-
-function* read_map(map: Map<Form, Form>): Reads<Map<Form, Form>> {
+function* read_pairs(pairs: Pairs): Reads<Pairs> {
     let currentKey: Form | undefined = undefined;
     let token;
     while (((token = yield* tap), token[0] !== "closing")) {
         const form = yield* read_form(token);
 
         if (currentKey === undefined) {
+            pairs.k.push(form);
             currentKey = form;
         } else {
-            map.set(currentKey, form);
+            pairs.v.push(form);
             currentKey = undefined;
         }
     }
 
     if (currentKey !== undefined) {
-        throw new Error("expecting a value for key " + currentKey);
+        throw new Error("expecting a value for key " + stringify(currentKey));
     }
 
     if (token[1] !== "}") {
-        throw new Error("closing " + token[1] + " does not match with (");
+        throw new Error("closing " + token[1] + " does not match with {");
     }
 
-    return map;
+    return pairs;
 }
 
-function* read_shorthand(name: string): Reads<List> {
+function* read_shorthand(name: string): Reads<Collection> {
     const form = yield* read_form();
-    const call = new List(new Sym(name), form);
+    const call = list(sym(name), form);
     return call;
 }
 
@@ -86,11 +82,11 @@ function* read_form(token?: Token): Reads<Form> {
 
     if (token[0] === "opening") {
         if (token[1] === "(") {
-            return yield* read_list(new List());
+            return yield* read_collection(list());
         } else if (token[1] === "[") {
-            return yield* read_array([]);
+            return yield* read_collection(vec());
         } else if (token[1] === "{") {
-            return yield* read_map(new Map());
+            return yield* read_pairs(pairs());
         } else {
             return null as never;
         }
@@ -100,11 +96,7 @@ function* read_form(token?: Token): Reads<Form> {
         throw new Error("extra " + token[1] + " in input");
     } else {
         if (token[0] === "symbol") {
-            if (token[1].startsWith(":")) {
-                return new Keyword(token[1].substring(1));
-            } else {
-                return new Sym(token[1]);
-            }
+            return sym(token[1]);
         } else {
             return token[1];
         }

@@ -18,7 +18,8 @@
   },
   "imports": {
     "#core/*": "./src/core/*",
-    "#ast/*": "./src/ast/*"
+    "#compiler/*": "./src/compiler/*",
+    "#runtime/*": "./src/runtime/*"
   },
   "type": "module",
   "dependencies": {
